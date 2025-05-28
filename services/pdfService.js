@@ -23,9 +23,19 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
-async function drawSectionTitle(page, text, approach, y, font) {
-  const auditText = `Audit Trail ${approach === 'append' ? '(Append Page)' : '(Merge PDF)'}`;
+async function drawSectionTitle(page, text, fileName, y, font) {
+  const auditText = `Audit Trail - ${fileName}`;
   
+  // Draw blue border
+  page.drawRectangle({
+    x: 20,
+    y: 20,
+    width: page.getSize().width - 40,
+    height: page.getSize().height - 40,
+    borderColor: rgb(0.0, 0.47, 0.85), // CloudByz blue
+    borderWidth: 2,
+  });
+
   page.drawText(auditText, {
     x: 40,
     y: y - 10,
@@ -176,7 +186,6 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
-  // Maximum dimensions for icons while maintaining aspect ratio
   const maxIconDimension = 16;
 
   for (const [index, event] of eventsOnPage.entries()) {
@@ -189,7 +198,6 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
         const image = await pdfDoc.embedPng(imageBytes);
         const imageDims = image.scale(1);
         
-        // Calculate scaled dimensions while maintaining aspect ratio
         let width = imageDims.width;
         let height = imageDims.height;
         
@@ -203,7 +211,6 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
           width = width * scale;
         }
 
-        // Center the icon vertically relative to the text
         const verticalOffset = (maxIconDimension - height) / 2;
         
         page.drawImage(image, {
@@ -241,15 +248,13 @@ async function drawFooter(page, pdfDoc) {
     const logoPath = path.join(__dirname, '../cloudbyz.png');
     const logoImage = await fs.readFile(logoPath);
     const logo = await pdfDoc.embedPng(logoImage);
-    const { width: pageWidth } = page.getSize();
     
     const logoWidth = 100;
     const logoHeight = 30;
-    const logoX = (pageWidth - logoWidth) / 2;
     
     page.drawImage(logo, {
-      x: logoX,
-      y: 20,
+      x: 40,
+      y: 30,
       width: logoWidth,
       height: logoHeight
     });
@@ -262,22 +267,23 @@ export async function appendEventPage(pdfPath, events) {
   try {
     const pdfBytes = await fs.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
+    const fileName = path.basename(pdfPath);
     
     const page1 = pdfDoc.addPage();
     const { height } = page1.getSize();
     
-    await drawSectionTitle(page1, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    const activityY = await drawDetailsSection(page1, pdfDoc, path.basename(pdfPath), height - 150);
+    await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+    const activityY = await drawDetailsSection(page1, pdfDoc, fileName, height - 150);
     await drawActivitySection(page1, pdfDoc, events, 0, 6, activityY, true);
     await drawFooter(page1, pdfDoc);
     
     const page2 = pdfDoc.addPage();
-    await drawSectionTitle(page2, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+    await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     await drawActivitySection(page2, pdfDoc, events, 6, events.length, height - 150);
     await drawFooter(page2, pdfDoc);
     
     const modifiedPdfBytes = await pdfDoc.save();
-    const outputPath = path.join(outputDir, `modified-${path.basename(pdfPath)}`);
+    const outputPath = path.join(outputDir, `modified-${fileName}`);
     await fs.writeFile(outputPath, modifiedPdfBytes);
     
     return outputPath;
@@ -289,18 +295,19 @@ export async function appendEventPage(pdfPath, events) {
 
 export async function createAndMergePdf(pdfPath, events) {
   try {
+    const fileName = path.basename(pdfPath);
     const eventsPdfDoc = await PDFDocument.create();
     
     const page1 = eventsPdfDoc.addPage();
     const { height } = page1.getSize();
     
-    await drawSectionTitle(page1, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    const activityY = await drawDetailsSection(page1, eventsPdfDoc, path.basename(pdfPath), height - 150);
+    await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+    const activityY = await drawDetailsSection(page1, eventsPdfDoc, fileName, height - 150);
     await drawActivitySection(page1, eventsPdfDoc, events, 0, 6, activityY, true);
     await drawFooter(page1, eventsPdfDoc);
     
     const page2 = eventsPdfDoc.addPage();
-    await drawSectionTitle(page2, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+    await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     await drawActivitySection(page2, eventsPdfDoc, events, 6, events.length, height - 150);
     await drawFooter(page2, eventsPdfDoc);
     
@@ -318,7 +325,7 @@ export async function createAndMergePdf(pdfPath, events) {
     eventsPages.forEach((page) => mergedPdfDoc.addPage(page));
     
     const mergedPdfBytes = await mergedPdfDoc.save();
-    const outputPath = path.join(outputDir, `merged-${path.basename(pdfPath)}`);
+    const outputPath = path.join(outputDir, `merged-${fileName}`);
     await fs.writeFile(outputPath, mergedPdfBytes);
     
     return outputPath;
