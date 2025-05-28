@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 const outputDir = path.join(__dirname, '../output');
 const imagesDir = path.join(__dirname, 'images');
 
+// Time zone utility function to get IST timestamp
 function getISTTimestamp() {
   const date = new Date();
   return date.toLocaleString('en-US', { 
@@ -23,12 +24,13 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
+// Extracts the original file name from the given file name
 function getOriginalFileName(fileName) {
-  // Remove timestamp prefix and get original name
   const match = fileName.match(/\d+-\d+-(.*)/);
   return match ? match[1] : fileName;
 }
 
+// PDF Styling functions
 async function drawSectionTitle(page, text, fileName, y, font) {
   const originalFileName = getOriginalFileName(fileName);
   const auditText = `Audit Trail - ${originalFileName}`;
@@ -39,7 +41,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     y: 20,
     width: page.getSize().width - 40,
     height: page.getSize().height - 40,
-    borderColor: rgb(0.0, 0.47, 0.85), // CloudByz blue
+    borderColor: rgb(0.0, 0.47, 0.85), // Cloudbyz blue
     borderWidth: 2,
   });
 
@@ -54,6 +56,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     const testLine = line + (line ? ' ' : '') + word;
     const textWidth = font.widthOfTextAtSize(testLine, fontSize);
     
+    // If the text exceeds the max width, draw the current line and start a new one
     if (textWidth > maxWidth && line) {
       page.drawText(line, {
         x: 40,
@@ -89,6 +92,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
   return yOffset - 40;
 }
 
+// Draws the details section with file name, status, and timestamp
 async function drawDetailsSection(page, pdfDoc, fileName, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -176,6 +180,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   return startY - (lineHeight * 3) - 40;
 }
 
+// Maps event text to corresponding icon paths
 function getEventIcon(eventText) {
   if (eventText.includes('created')) return path.join(imagesDir, 'created.png');
   if (eventText.includes('emailed')) return path.join(imagesDir, 'emailed.png');
@@ -190,6 +195,7 @@ function getEventIcon(eventText) {
   return null;
 }
 
+// Draws the activity section with events
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -224,6 +230,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
+  // Icon styling
   const maxIconDimension = 16;
 
   for (const [index, event] of eventsOnPage.entries()) {
@@ -238,7 +245,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
         
         let width = imageDims.width;
         let height = imageDims.height;
-        
+
         if (width > height) {
           const scale = maxIconDimension / width;
           width = maxIconDimension;
@@ -281,6 +288,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   }
 }
 
+// Draws the footer with the Cloudbyz logo
 async function drawFooter(page, pdfDoc) {
   try {
     const logoPath = path.join(__dirname, '../cloudbyz.png');
@@ -301,14 +309,18 @@ async function drawFooter(page, pdfDoc) {
   }
 }
 
+
+// APPROACH 1: Append events to an existing PDF
+
+
 export async function appendEventPage(pdfPath, events) {
   try {
     const pdfBytes = await fs.readFile(pdfPath);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pdfDoc = await PDFDocument.load(pdfBytes); 
     const fileName = path.basename(pdfPath);
     const originalFileName = getOriginalFileName(fileName);
     
-    const page1 = pdfDoc.addPage();
+    const page1 = pdfDoc.addPage(); 
     const { height } = page1.getSize();
     
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
@@ -331,6 +343,10 @@ export async function appendEventPage(pdfPath, events) {
     throw error;
   }
 }
+
+
+// APPROACH 2: Create a new PDF with events and merge with the original PDF
+
 
 export async function createAndMergePdf(pdfPath, events) {
   try {

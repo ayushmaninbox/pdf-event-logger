@@ -8,6 +8,7 @@ import { getEvents } from '../services/eventService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure the uploads directory exists
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, '../uploads'));
@@ -18,6 +19,7 @@ const storage = multer.diskStorage({
   }
 });
 
+// Filter to allow only PDF files
 const fileFilter = (req, file, cb) => {
   if (file.mimetype === 'application/pdf') {
     cb(null, true);
@@ -29,11 +31,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ 
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } 
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
 });
 
 const router = express.Router();
 
+// POST route to handle PDF uploads
 router.post('/upload', upload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
@@ -48,12 +51,13 @@ router.post('/upload', upload.single('pdfFile'), async (req, res) => {
     
     let outputPath;
     
+    // Functions are in services/pdfService.js
     if (approach === 'append') {
       // Approach 1: Append a page to the existing PDF
-      outputPath = await appendEventPage(filePath, events);
+      outputPath = await appendEventPage(filePath, events); 
     } else {
       // Approach 2: Create a new PDF with events and merge it
-      outputPath = await createAndMergePdf(filePath, events);
+      outputPath = await createAndMergePdf(filePath, events); 
     }
     
     res.setHeader('Content-Type', 'application/pdf');

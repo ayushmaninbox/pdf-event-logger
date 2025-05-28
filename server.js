@@ -21,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api', uploadRouter);
 
+// HOMEPAGE UI
 app.get('/', (req, res) => {
   res.send(`
     <html>

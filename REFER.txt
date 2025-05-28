@@ -1,0 +1,27 @@
+project-root/
+│
+├── server.js 
+├── routes/
+│   └── upload.js
+├── services/
+│   ├── eventService.js
+│   └── pdfService.js
+├── output/       ← (stores the modified files)
+├── uploads/      ← (stores the uploaded files)
+└── ... (other files) ← (useless)
+
+server.js:
+- HOME PAGE 
+- connected to "routes/upload.js (via app.use('/api', uploadRouter))"
+
+routes/upload.js:
+- END POINT OF UPLOAD
+- Connected to "services/pdfService.js" & "services/eventService.js" 
+
+services/pdfService.js:
+- appendEventPage
+- createAndMergePdf
+- Saves the result in /output
+
+services/eventService.js:
+-  Array of event logs
