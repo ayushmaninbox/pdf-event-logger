@@ -96,7 +96,6 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     const testLine = line + (line ? ' ' : '') + word;
     const textWidth = font.widthOfTextAtSize(testLine, fontSize);
     
-    // If the text exceeds the max width, draw the current line and start a new one
     if (textWidth > maxWidth && line) {
       page.drawText(line, {
         x: 40,
@@ -189,7 +188,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     x: valueX,
     y: startY - lineHeight + 4,
     size: 3,
-    color: rgb(0.0, 0.47, 0.85),  // Updated to match Cloudbyz blue
+    color: rgb(0.2, 0.7, 0.2),
   });
   
   page.drawText('Signed', {
@@ -299,20 +298,12 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
 
         const verticalOffset = (maxIconDimension - height) / 2;
         
-        // Draw a colored circle as background for the icon
-        page.drawCircle({
-          x: 60 + (width / 2),
-          y: eventY + verticalOffset + (height / 2),
-          size: Math.max(width, height) / 2,
-          color: iconColor,
-        });
-        
         page.drawImage(image, {
           x: 60,
           y: eventY + verticalOffset,
           width,
           height,
-          color: rgb(1, 1, 1), // White color for the icon
+          color: iconColor
         });
       } catch (error) {
         console.error(`Error embedding icon for event: ${event}`, error);
