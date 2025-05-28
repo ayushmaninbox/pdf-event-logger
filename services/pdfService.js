@@ -64,6 +64,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     height: 90,
     borderColor: rgb(0.9, 0.9, 0.9),
     borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
   });
 
   const labelX = 60;
@@ -134,33 +135,46 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   return startY - (lineHeight * 3) - 40;
 }
 
-async function drawActivitySection(page, pdfDoc, events, y) {
+async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  // Draw section title
-  page.drawText('Activity', {
-    x: 40,
-    y: y - 35,
-    size: 18,
-    font: boldFont,
-    color: rgb(0.2, 0.2, 0.2),
-  });
+  if (!isFirstPage) {
+    // Draw section title for continuation pages
+    page.drawText('Activity (Continued)', {
+      x: 40,
+      y: y - 35,
+      size: 18,
+      font: boldFont,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+  } else {
+    // Draw section title for first page
+    page.drawText('Activity', {
+      x: 40,
+      y: y - 35,
+      size: 18,
+      font: boldFont,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+  }
   
   const startY = y - 80;
   const lineHeight = 50;
+  const eventsOnPage = events.slice(startIndex, endIndex);
   
   // Draw content box with light border
   page.drawRectangle({
     x: 40,
-    y: startY - (events.length * lineHeight) + 20,
+    y: startY - (eventsOnPage.length * lineHeight) + 20,
     width: page.getSize().width - 80,
-    height: events.length * lineHeight,
+    height: eventsOnPage.length * lineHeight,
     borderColor: rgb(0.9, 0.9, 0.9),
     borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
   });
 
-  events.forEach((event, index) => {
+  eventsOnPage.forEach((event, index) => {
     const eventY = startY - (index * lineHeight);
     
     // Draw separator line between events
@@ -195,16 +209,22 @@ async function drawActivitySection(page, pdfDoc, events, y) {
 }
 
 async function drawFooter(page, pdfDoc) {
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const { width, height } = page.getSize();
   
-  // Draw Cloudbyz text at the bottom
-  page.drawText('cloudbyz', {
-    x: width / 2 - 25,
-    y: 30,
-    size: 12,
-    font: font,
-    color: rgb(0.5, 0.5, 0.5),
+  // Load and embed the logo image
+  const logoBytes = await fs.readFile(path.join(__dirname, '../cloudbyz.svg'));
+  const logoImage = await pdfDoc.embedSvg(logoBytes);
+  const scaleFactor = 0.15;
+  
+  const logoWidth = logoImage.width * scaleFactor;
+  const logoHeight = logoImage.height * scaleFactor;
+  
+  // Draw the logo at the bottom center
+  page.drawSvg(logoBytes, {
+    x: (width - logoWidth) / 2,
+    y: 20,
+    width: logoWidth,
+    height: logoHeight,
   });
 }
 
@@ -212,13 +232,21 @@ export async function appendEventPage(pdfPath, events) {
   try {
     const pdfBytes = await fs.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
-    const page = pdfDoc.addPage();
-    const { height } = page.getSize();
     
-    await drawSectionTitle(page, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    const activityY = await drawDetailsSection(page, pdfDoc, path.basename(pdfPath), height - 150);
-    await drawActivitySection(page, pdfDoc, events, activityY);
-    await drawFooter(page, pdfDoc);
+    // First additional page with details and first set of events
+    const page1 = pdfDoc.addPage();
+    const { height } = page1.getSize();
+    
+    await drawSectionTitle(page1, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+    const activityY = await drawDetailsSection(page1, pdfDoc, path.basename(pdfPath), height - 150);
+    await drawActivitySection(page1, pdfDoc, events, 0, 8, activityY, true);
+    await drawFooter(page1, pdfDoc);
+    
+    // Second additional page with remaining events
+    const page2 = pdfDoc.addPage();
+    await drawSectionTitle(page2, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+    await drawActivitySection(page2, pdfDoc, events, 8, events.length, height - 150);
+    await drawFooter(page2, pdfDoc);
     
     const modifiedPdfBytes = await pdfDoc.save();
     const outputPath = path.join(outputDir, `modified-${path.basename(pdfPath)}`);
@@ -234,13 +262,21 @@ export async function appendEventPage(pdfPath, events) {
 export async function createAndMergePdf(pdfPath, events) {
   try {
     const eventsPdfDoc = await PDFDocument.create();
-    const page = eventsPdfDoc.addPage();
-    const { height } = page.getSize();
     
-    await drawSectionTitle(page, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    const activityY = await drawDetailsSection(page, eventsPdfDoc, path.basename(pdfPath), height - 150);
-    await drawActivitySection(page, eventsPdfDoc, events, activityY);
-    await drawFooter(page, eventsPdfDoc);
+    // First page with details and first set of events
+    const page1 = eventsPdfDoc.addPage();
+    const { height } = page1.getSize();
+    
+    await drawSectionTitle(page1, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+    const activityY = await drawDetailsSection(page1, eventsPdfDoc, path.basename(pdfPath), height - 150);
+    await drawActivitySection(page1, eventsPdfDoc, events, 0, 8, activityY, true);
+    await drawFooter(page1, eventsPdfDoc);
+    
+    // Second page with remaining events
+    const page2 = eventsPdfDoc.addPage();
+    await drawSectionTitle(page2, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+    await drawActivitySection(page2, eventsPdfDoc, events, 8, events.length, height - 150);
+    await drawFooter(page2, eventsPdfDoc);
     
     const eventsPdfBytes = await eventsPdfDoc.save();
     
@@ -252,8 +288,8 @@ export async function createAndMergePdf(pdfPath, events) {
     originalPages.forEach((page) => mergedPdfDoc.addPage(page));
     
     const eventsPdfDoc2 = await PDFDocument.load(eventsPdfBytes);
-    const eventsPage = await mergedPdfDoc.copyPages(eventsPdfDoc2, [0]);
-    mergedPdfDoc.addPage(eventsPage[0]);
+    const eventsPages = await mergedPdfDoc.copyPages(eventsPdfDoc2, [0, 1]);
+    eventsPages.forEach((page) => mergedPdfDoc.addPage(page));
     
     const mergedPdfBytes = await mergedPdfDoc.save();
     const outputPath = path.join(outputDir, `merged-${path.basename(pdfPath)}`);
