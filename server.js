@@ -11,12 +11,12 @@ const __dirname = path.dirname(__filename);
 // Directory setup
 const uploadsDir = path.join(__dirname, 'uploads');
 const outputDir = path.join(__dirname, 'output');
-const imagesDir = path.join(__dirname, 'services/images');
+const imagesDir = path.join(__dirname, 'images');
 
 await fs.ensureDir(uploadsDir);
 await fs.ensureDir(outputDir);
 
-// Event Service Code
+// Real-world event log examples with more activities
 const events = [
   "Document created by Sarah Chen (sarah.chen@cloudbyz.com)",
   "Document emailed to David Miller (david.m@cloudbyz.com) for signature",
@@ -49,7 +49,7 @@ function clearEvents() {
   return events;
 }
 
-// PDF Service Code
+// Time zone utility function to get IST timestamp
 function getISTTimestamp() {
   const date = new Date();
   return date.toLocaleString('en-US', { 
@@ -64,15 +64,18 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
+// Extracts the original file name from the given file name
 function getOriginalFileName(fileName) {
   const match = fileName.match(/\d+-\d+-(.*)/);
   return match ? match[1] : fileName;
 }
 
+// PDF Styling functions
 async function drawSectionTitle(page, text, fileName, y, font) {
   const originalFileName = getOriginalFileName(fileName);
   const auditText = `Audit Trail - ${originalFileName}`;
   
+  // Draw blue border
   page.drawRectangle({
     x: 20,
     y: 20,
@@ -82,6 +85,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     borderWidth: 2,
   });
 
+  // Calculate text width and wrap if needed
   const fontSize = 24;
   const maxWidth = page.getSize().width - 80;
   const words = auditText.split(' ');
@@ -92,6 +96,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     const testLine = line + (line ? ' ' : '') + word;
     const textWidth = font.widthOfTextAtSize(testLine, fontSize);
     
+    // If the text exceeds the max width, draw the current line and start a new one
     if (textWidth > maxWidth && line) {
       page.drawText(line, {
         x: 40,
@@ -127,6 +132,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
   return yOffset - 40;
 }
 
+// Draws the details section with file name, status, and timestamp
 async function drawDetailsSection(page, pdfDoc, fileName, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -214,6 +220,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   return startY - (lineHeight * 3) - 40;
 }
 
+// Maps event text to corresponding icon paths
 function getEventIcon(eventText) {
   if (eventText.includes('created')) return path.join(imagesDir, 'created.png');
   if (eventText.includes('emailed')) return path.join(imagesDir, 'emailed.png');
@@ -228,6 +235,7 @@ function getEventIcon(eventText) {
   return null;
 }
 
+// Draws the activity section with events
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -262,6 +270,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
+  // Icon styling
   const maxIconDimension = 16;
 
   for (const [index, event] of eventsOnPage.entries()) {
@@ -319,6 +328,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   }
 }
 
+// Draws the footer with the Cloudbyz logo
 async function drawFooter(page, pdfDoc) {
   try {
     const logoPath = path.join(__dirname, 'cloudbyz.png');
@@ -338,6 +348,12 @@ async function drawFooter(page, pdfDoc) {
     console.error('Error drawing footer:', error);
   }
 }
+
+
+
+// APPROACH 1: Append events to an existing PDF
+
+
 
 async function appendEventPage(pdfPath, events) {
   try {
@@ -369,6 +385,12 @@ async function appendEventPage(pdfPath, events) {
     throw error;
   }
 }
+
+
+
+// APPROACH 2: Create a new PDF with events and merge with the original PDF
+
+
 
 async function createAndMergePdf(pdfPath, events) {
   try {
@@ -413,7 +435,7 @@ async function createAndMergePdf(pdfPath, events) {
   }
 }
 
-// Upload Route Setup
+// Ensure the uploads directory exists
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
@@ -424,6 +446,7 @@ const storage = multer.diskStorage({
   }
 });
 
+// Filter to allow only PDF files
 const fileFilter = (req, file, cb) => {
   if (file.mimetype === 'application/pdf') {
     cb(null, true);
@@ -435,7 +458,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ 
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
 });
 
 // Express App Setup
@@ -445,7 +468,7 @@ const PORT = 5000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// POST route to handle PDF uploads
 app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
@@ -458,9 +481,12 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
     
     let outputPath;
     
+    // Functions are in services/pdfService.js
     if (approach === 'append') {
+      // Approach 1: Append a page to the existing PDF
       outputPath = await appendEventPage(filePath, getEvents());
     } else {
+      // Approach 2: Create a new PDF with events and merge it
       outputPath = await createAndMergePdf(filePath, getEvents());
     }
     
@@ -479,6 +505,7 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
   }
 });
 
+// HOME PAGE FORM
 app.get('/', (req, res) => {
   res.send(`
     <html>
