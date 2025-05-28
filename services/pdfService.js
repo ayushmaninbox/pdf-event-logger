@@ -176,11 +176,8 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
-  // Standard icon dimensions
-  const iconSize = {
-    width: 20,
-    height: 20
-  };
+  // Maximum dimensions for icons while maintaining aspect ratio
+  const maxIconDimension = 16;
 
   for (const [index, event] of eventsOnPage.entries()) {
     const eventY = startY - (index * lineHeight);
@@ -190,12 +187,30 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
       try {
         const imageBytes = await fs.readFile(iconPath);
         const image = await pdfDoc.embedPng(imageBytes);
+        const imageDims = image.scale(1);
+        
+        // Calculate scaled dimensions while maintaining aspect ratio
+        let width = imageDims.width;
+        let height = imageDims.height;
+        
+        if (width > height) {
+          const scale = maxIconDimension / width;
+          width = maxIconDimension;
+          height = height * scale;
+        } else {
+          const scale = maxIconDimension / height;
+          height = maxIconDimension;
+          width = width * scale;
+        }
+
+        // Center the icon vertically relative to the text
+        const verticalOffset = (maxIconDimension - height) / 2;
         
         page.drawImage(image, {
           x: 60,
-          y: eventY,
-          width: iconSize.width,
-          height: iconSize.height
+          y: eventY + verticalOffset,
+          width,
+          height
         });
       } catch (error) {
         console.error(`Error embedding icon for event: ${event}`, error);
