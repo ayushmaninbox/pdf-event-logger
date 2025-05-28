@@ -160,7 +160,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   }
   
   const startY = y - 80;
-  const lineHeight = 50;
+  const lineHeight = 60; // Increased line height to accommodate timestamp
   const eventsOnPage = events.slice(startIndex, endIndex);
   
   // Draw content box with light border
@@ -168,7 +168,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     x: 40,
     y: startY - (eventsOnPage.length * lineHeight) + 20,
     width: page.getSize().width - 80,
-    height: eventsOnPage.length * lineHeight,
+    height: eventsOnPage.length * lineHeight + 20, // Added padding
     borderColor: rgb(0.9, 0.9, 0.9),
     borderWidth: 1,
     color: rgb(0.98, 0.98, 0.98),
@@ -180,8 +180,8 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     // Draw separator line between events
     if (index > 0) {
       page.drawLine({
-        start: { x: 40, y: eventY + 35 },
-        end: { x: page.getSize().width - 40, y: eventY + 35 },
+        start: { x: 40, y: eventY + 45 }, // Adjusted separator position
+        end: { x: page.getSize().width - 40, y: eventY + 45 },
         thickness: 1,
         color: rgb(0.9, 0.9, 0.9),
       });
@@ -190,7 +190,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     // Draw event text
     page.drawText(event, {
       x: 60,
-      y: eventY,
+      y: eventY + 10, // Adjusted text position
       size: 11,
       font: font,
       color: rgb(0.2, 0.2, 0.2),
@@ -200,7 +200,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     const timestamp = getISTTimestamp();
     page.drawText(timestamp, {
       x: 60,
-      y: eventY - 20,
+      y: eventY - 15, // Adjusted timestamp position
       size: 10,
       font: font,
       color: rgb(0.5, 0.5, 0.5),
@@ -209,17 +209,25 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
 }
 
 async function drawFooter(page, pdfDoc) {
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const { width } = page.getSize();
-  
-  // Draw Cloudbyz text at the bottom
-  page.drawText('cloudbyz', {
-    x: width / 2 - 25,
-    y: 30,
-    size: 12,
-    font: font,
-    color: rgb(0.5, 0.5, 0.5),
-  });
+  try {
+    const logoPath = path.join(__dirname, '../cloudbyz.png');
+    const logoImage = await fs.readFile(logoPath);
+    const logo = await pdfDoc.embedPng(logoImage);
+    const { width: pageWidth } = page.getSize();
+    
+    const logoWidth = 100;
+    const logoHeight = 30;
+    const logoX = (pageWidth - logoWidth) / 2;
+    
+    page.drawImage(logo, {
+      x: logoX,
+      y: 20,
+      width: logoWidth,
+      height: logoHeight
+    });
+  } catch (error) {
+    console.error('Error drawing footer:', error);
+  }
 }
 
 export async function appendEventPage(pdfPath, events) {
@@ -233,13 +241,13 @@ export async function appendEventPage(pdfPath, events) {
     
     await drawSectionTitle(page1, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, pdfDoc, path.basename(pdfPath), height - 150);
-    await drawActivitySection(page1, pdfDoc, events, 0, 8, activityY, true);
+    await drawActivitySection(page1, pdfDoc, events, 0, 6, activityY, true); // Reduced events per page
     await drawFooter(page1, pdfDoc);
     
     // Second additional page with remaining events
     const page2 = pdfDoc.addPage();
     await drawSectionTitle(page2, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    await drawActivitySection(page2, pdfDoc, events, 8, events.length, height - 150);
+    await drawActivitySection(page2, pdfDoc, events, 6, events.length, height - 150);
     await drawFooter(page2, pdfDoc);
     
     const modifiedPdfBytes = await pdfDoc.save();
@@ -263,13 +271,13 @@ export async function createAndMergePdf(pdfPath, events) {
     
     await drawSectionTitle(page1, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, eventsPdfDoc, path.basename(pdfPath), height - 150);
-    await drawActivitySection(page1, eventsPdfDoc, events, 0, 8, activityY, true);
+    await drawActivitySection(page1, eventsPdfDoc, events, 0, 6, activityY, true); // Reduced events per page
     await drawFooter(page1, eventsPdfDoc);
     
     // Second page with remaining events
     const page2 = eventsPdfDoc.addPage();
     await drawSectionTitle(page2, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    await drawActivitySection(page2, eventsPdfDoc, events, 8, events.length, height - 150);
+    await drawActivitySection(page2, eventsPdfDoc, events, 6, events.length, height - 150);
     await drawFooter(page2, eventsPdfDoc);
     
     const eventsPdfBytes = await eventsPdfDoc.save();
