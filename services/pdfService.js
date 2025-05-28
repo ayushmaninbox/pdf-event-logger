@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const outputDir = path.join(__dirname, '../output');
+const imagesDir = path.join(__dirname, 'images');
 
 function getISTTimestamp() {
   const date = new Date();
@@ -128,16 +129,16 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 }
 
 function getEventIcon(eventText) {
-  if (eventText.includes('created')) return '📄';
-  if (eventText.includes('emailed')) return '📧';
-  if (eventText.includes('viewed')) return '👁️';
-  if (eventText.includes('password')) return '🔑';
-  if (eventText.includes('signed')) return '✍️';
-  if (eventText.includes('approved')) return '✅';
-  if (eventText.includes('review')) return '📝';
-  if (eventText.includes('verified')) return '✔️';
-  if (eventText.includes('archived')) return '📦';
-  return '•';
+  if (eventText.includes('created')) return path.join(imagesDir, 'created.png');
+  if (eventText.includes('emailed')) return path.join(imagesDir, 'emailed.png');
+  if (eventText.includes('viewed')) return path.join(imagesDir, 'viewed.png');
+  if (eventText.includes('password')) return path.join(imagesDir, 'password.png');
+  if (eventText.includes('signed')) return path.join(imagesDir, 'signed.png');
+  if (eventText.includes('approved')) return path.join(imagesDir, 'approved.png');
+  if (eventText.includes('review')) return path.join(imagesDir, 'review.png');
+  if (eventText.includes('verified')) return path.join(imagesDir, 'verified.png');
+  if (eventText.includes('archived')) return path.join(imagesDir, 'archived.png');
+  return null;
 }
 
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
@@ -174,17 +175,27 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
-  eventsOnPage.forEach((event, index) => {
+  for (const [index, event] of eventsOnPage.entries()) {
     const eventY = startY - (index * lineHeight);
-    const icon = getEventIcon(event.toLowerCase());
+    const iconPath = getEventIcon(event.toLowerCase());
     
-    page.drawText(icon, {
-      x: 60,
-      y: eventY + 10,
-      size: 12,
-      font: font,
-      color: rgb(0.2, 0.2, 0.2),
-    });
+    if (iconPath) {
+      try {
+        const imageBytes = await fs.readFile(iconPath);
+        const image = await pdfDoc.embedPng(imageBytes);
+        const scale = 0.15; // Adjust scale as needed
+        const { width, height } = image.scale(scale);
+        
+        page.drawImage(image, {
+          x: 60,
+          y: eventY,
+          width,
+          height
+        });
+      } catch (error) {
+        console.error(`Error embedding icon for event: ${event}`, error);
+      }
+    }
     
     page.drawText(event, {
       x: 85,
@@ -202,7 +213,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
       font: font,
       color: rgb(0.5, 0.5, 0.5),
     });
-  });
+  }
 }
 
 async function drawFooter(page, pdfDoc) {
