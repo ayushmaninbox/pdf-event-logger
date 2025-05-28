@@ -8,7 +8,6 @@ const __dirname = path.dirname(__filename);
 
 const outputDir = path.join(__dirname, '../output');
 
-// Helper function to get IST timestamp
 function getISTTimestamp() {
   const date = new Date();
   return date.toLocaleString('en-US', { 
@@ -23,67 +22,46 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
-// Helper function to draw section title
 async function drawSectionTitle(page, text, approach, y, font) {
   const auditText = `Audit Trail ${approach === 'append' ? '(Append Page)' : '(Merge PDF)'}`;
   
-  // Draw background rectangle
-  page.drawRectangle({
-    x: 40,
-    y: y - 40,
-    width: page.getSize().width - 80,
-    height: 50,
-    color: rgb(0.95, 0.95, 0.95),
-    borderColor: rgb(0.8, 0.8, 0.8),
-    borderWidth: 1,
-  });
-
-  // Draw title
   page.drawText(auditText, {
     x: 50,
     y: y - 10,
-    size: 28,
+    size: 24,
     font,
-    color: rgb(0.2, 0.2, 0.8),
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  page.drawLine({
+    start: { x: 50, y: y - 20 },
+    end: { x: page.getSize().width - 50, y: y - 20 },
+    thickness: 1,
+    color: rgb(0.8, 0.8, 0.8),
   });
 }
 
-// Helper function to draw details section
 async function drawDetailsSection(page, pdfDoc, fileName, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  // Draw section background
-  page.drawRectangle({
-    x: 40,
-    y: y - 150,
-    width: page.getSize().width - 80,
-    height: 130,
-    color: rgb(0.98, 0.98, 1),
-    borderColor: rgb(0.8, 0.8, 0.9),
-    borderWidth: 1,
-  });
-  
-  // Draw Details section
   page.drawText('Document Details', {
     x: 50,
     y: y - 35,
-    size: 20,
+    size: 16,
     font: boldFont,
-    color: rgb(0.3, 0.3, 0.8),
+    color: rgb(0.2, 0.2, 0.2),
   });
   
-  // Labels and values
-  const labelX = 60;
-  const valueX = 250;
+  const labelX = 50;
+  const valueX = 200;
   const startY = y - 70;
-  const lineHeight = 30;
+  const lineHeight = 25;
   
-  // File name
-  page.drawText('DOCUMENT NAME', {
+  page.drawText('Document Name:', {
     x: labelX,
     y: startY,
-    size: 12,
+    size: 11,
     font: boldFont,
     color: rgb(0.4, 0.4, 0.4),
   });
@@ -91,46 +69,32 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   page.drawText(fileName, {
     x: valueX,
     y: startY,
-    size: 12,
+    size: 11,
     font: font,
-    color: rgb(0, 0, 0),
+    color: rgb(0.2, 0.2, 0.2),
   });
   
-  // Status
-  page.drawText('DOCUMENT STATUS', {
+  page.drawText('Status:', {
     x: labelX,
     y: startY - lineHeight,
-    size: 12,
+    size: 11,
     font: boldFont,
     color: rgb(0.4, 0.4, 0.4),
   });
   
-  // Draw status indicator
-  page.drawRectangle({
+  page.drawText('Verified', {
     x: valueX,
-    y: startY - lineHeight - 5,
-    width: 80,
-    height: 22,
-    color: rgb(0.9, 0.97, 0.9),
-    borderColor: rgb(0.2, 0.8, 0.2),
-    borderWidth: 1,
-    borderRadius: 4,
+    y: startY - lineHeight,
+    size: 11,
+    font: font,
+    color: rgb(0.2, 0.6, 0.2),
   });
   
-  page.drawText('VERIFIED', {
-    x: valueX + 15,
-    y: startY - lineHeight + 3,
-    size: 12,
-    font: boldFont,
-    color: rgb(0.2, 0.8, 0.2),
-  });
-  
-  // Timestamp
   const timestamp = getISTTimestamp();
-  page.drawText('VERIFICATION TIME', {
+  page.drawText('Verification Time:', {
     x: labelX,
     y: startY - (lineHeight * 2),
-    size: 12,
+    size: 11,
     font: boldFont,
     color: rgb(0.4, 0.4, 0.4),
   });
@@ -138,75 +102,59 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   page.drawText(timestamp, {
     x: valueX,
     y: startY - (lineHeight * 2),
-    size: 12,
+    size: 11,
     font: font,
-    color: rgb(0, 0, 0),
+    color: rgb(0.2, 0.2, 0.2),
   });
   
-  return startY - (lineHeight * 3);
+  return startY - (lineHeight * 3) - 20;
 }
 
-// Helper function to draw activity section
 async function drawActivitySection(page, pdfDoc, events, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  // Draw section background
-  page.drawRectangle({
-    x: 40,
-    y: y - (events.length * 40) - 60,
-    width: page.getSize().width - 80,
-    height: events.length * 40 + 50,
-    color: rgb(0.98, 0.98, 1),
-    borderColor: rgb(0.8, 0.8, 0.9),
-    borderWidth: 1,
-  });
-  
-  // Draw Activity section title
   page.drawText('Activity Timeline', {
     x: 50,
     y: y - 35,
-    size: 20,
+    size: 16,
     font: boldFont,
-    color: rgb(0.3, 0.3, 0.8),
+    color: rgb(0.2, 0.2, 0.2),
   });
   
   const startY = y - 70;
-  const lineHeight = 35;
+  const lineHeight = 30;
   
   events.forEach((event, index) => {
     const eventY = startY - (index * lineHeight);
     
-    // Draw event indicator
-    page.drawCircle({
-      x: 65,
-      y: eventY + 6,
-      size: 4,
-      color: rgb(0.3, 0.3, 0.8),
-    });
-    
-    // Draw event text
-    page.drawText(event, {
-      x: 80,
-      y: eventY,
-      size: 12,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
-    
-    // Draw timestamp
-    const timestamp = getISTTimestamp();
-    page.drawText(timestamp, {
-      x: page.getSize().width - 200,
+    page.drawText('•', {
+      x: 50,
       y: eventY,
       size: 11,
+      font: font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    
+    page.drawText(event, {
+      x: 65,
+      y: eventY,
+      size: 11,
+      font: font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    
+    const timestamp = getISTTimestamp();
+    page.drawText(timestamp, {
+      x: page.getSize().width - 180,
+      y: eventY,
+      size: 10,
       font: font,
       color: rgb(0.5, 0.5, 0.5),
     });
   });
 }
 
-// Approach 1: Append a new page to the existing PDF with events
 export async function appendEventPage(pdfPath, events) {
   try {
     const pdfBytes = await fs.readFile(pdfPath);
@@ -214,13 +162,8 @@ export async function appendEventPage(pdfPath, events) {
     const page = pdfDoc.addPage();
     const { height } = page.getSize();
     
-    // Draw title section
     await drawSectionTitle(page, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    
-    // Draw Details section
     const activityY = await drawDetailsSection(page, pdfDoc, path.basename(pdfPath), height - 150);
-    
-    // Draw Activity section
     await drawActivitySection(page, pdfDoc, events, activityY);
     
     const modifiedPdfBytes = await pdfDoc.save();
@@ -234,25 +177,18 @@ export async function appendEventPage(pdfPath, events) {
   }
 }
 
-// Approach 2: Create a new PDF with events and merge with the original
 export async function createAndMergePdf(pdfPath, events) {
   try {
     const eventsPdfDoc = await PDFDocument.create();
     const page = eventsPdfDoc.addPage();
     const { height } = page.getSize();
     
-    // Draw title section
     await drawSectionTitle(page, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    
-    // Draw Details section
     const activityY = await drawDetailsSection(page, eventsPdfDoc, path.basename(pdfPath), height - 150);
-    
-    // Draw Activity section
     await drawActivitySection(page, eventsPdfDoc, events, activityY);
     
     const eventsPdfBytes = await eventsPdfDoc.save();
     
-    // Merge with original PDF
     const originalPdfBytes = await fs.readFile(pdfPath);
     const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
     const mergedPdfDoc = await PDFDocument.create();
