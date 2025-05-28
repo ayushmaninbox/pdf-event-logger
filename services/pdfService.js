@@ -209,22 +209,16 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
 }
 
 async function drawFooter(page, pdfDoc) {
-  const { width, height } = page.getSize();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const { width } = page.getSize();
   
-  // Load and embed the logo image
-  const logoBytes = await fs.readFile(path.join(__dirname, '../cloudbyz.svg'));
-  const logoImage = await pdfDoc.embedSvg(logoBytes);
-  const scaleFactor = 0.15;
-  
-  const logoWidth = logoImage.width * scaleFactor;
-  const logoHeight = logoImage.height * scaleFactor;
-  
-  // Draw the logo at the bottom center
-  page.drawSvg(logoBytes, {
-    x: (width - logoWidth) / 2,
-    y: 20,
-    width: logoWidth,
-    height: logoHeight,
+  // Draw Cloudbyz text at the bottom
+  page.drawText('cloudbyz', {
+    x: width / 2 - 25,
+    y: 30,
+    size: 12,
+    font: font,
+    color: rgb(0.5, 0.5, 0.5),
   });
 }
 
