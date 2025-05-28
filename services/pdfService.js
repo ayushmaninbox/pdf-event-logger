@@ -128,16 +128,16 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 }
 
 function getEventIcon(eventText) {
-  if (eventText.includes('created')) return '[+]';
-  if (eventText.includes('emailed')) return '[>]';
-  if (eventText.includes('viewed')) return '[o]';
-  if (eventText.includes('password')) return '[#]';
-  if (eventText.includes('signed')) return '[~]';
-  if (eventText.includes('approved')) return '[v]';
-  if (eventText.includes('review')) return '[r]';
-  if (eventText.includes('verified')) return '[*]';
-  if (eventText.includes('archived')) return '[a]';
-  return '[-]';
+  if (eventText.includes('created')) return '📄';
+  if (eventText.includes('emailed')) return '📧';
+  if (eventText.includes('viewed')) return '👁️';
+  if (eventText.includes('password')) return '🔑';
+  if (eventText.includes('signed')) return '✍️';
+  if (eventText.includes('approved')) return '✅';
+  if (eventText.includes('review')) return '📝';
+  if (eventText.includes('verified')) return '✔️';
+  if (eventText.includes('archived')) return '📦';
+  return '•';
 }
 
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
