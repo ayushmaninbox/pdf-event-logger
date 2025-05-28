@@ -138,6 +138,7 @@ function getEventIcon(eventText) {
   if (eventText.includes('review')) return path.join(imagesDir, 'review.png');
   if (eventText.includes('verified')) return path.join(imagesDir, 'verified.png');
   if (eventText.includes('archived')) return path.join(imagesDir, 'archived.png');
+  if (eventText.includes('processing')) return path.join(imagesDir, 'processing.png');
   return null;
 }
 
@@ -175,6 +176,12 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     color: rgb(0.98, 0.98, 0.98),
   });
 
+  // Standard icon dimensions
+  const iconSize = {
+    width: 20,
+    height: 20
+  };
+
   for (const [index, event] of eventsOnPage.entries()) {
     const eventY = startY - (index * lineHeight);
     const iconPath = getEventIcon(event.toLowerCase());
@@ -183,14 +190,12 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
       try {
         const imageBytes = await fs.readFile(iconPath);
         const image = await pdfDoc.embedPng(imageBytes);
-        const scale = 0.15; // Adjust scale as needed
-        const { width, height } = image.scale(scale);
         
         page.drawImage(image, {
           x: 60,
           y: eventY,
-          width,
-          height
+          width: iconSize.width,
+          height: iconSize.height
         });
       } catch (error) {
         console.error(`Error embedding icon for event: ${event}`, error);
