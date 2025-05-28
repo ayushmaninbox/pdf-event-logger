@@ -128,16 +128,16 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 }
 
 function getEventIcon(eventText) {
-  if (eventText.includes('created')) return '📝';
-  if (eventText.includes('emailed')) return '📧';
-  if (eventText.includes('viewed')) return '👁️';
-  if (eventText.includes('password')) return '🔒';
-  if (eventText.includes('signed')) return '✍️';
-  if (eventText.includes('approved')) return '✅';
-  if (eventText.includes('review')) return '📋';
-  if (eventText.includes('verified')) return '✔️';
-  if (eventText.includes('archived')) return '📁';
-  return '•';
+  if (eventText.includes('created')) return '[+]';
+  if (eventText.includes('emailed')) return '[>]';
+  if (eventText.includes('viewed')) return '[o]';
+  if (eventText.includes('password')) return '[#]';
+  if (eventText.includes('signed')) return '[~]';
+  if (eventText.includes('approved')) return '[v]';
+  if (eventText.includes('review')) return '[r]';
+  if (eventText.includes('verified')) return '[*]';
+  if (eventText.includes('archived')) return '[a]';
+  return '[-]';
 }
 
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
@@ -178,15 +178,14 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
     const eventY = startY - (index * lineHeight);
     const icon = getEventIcon(event.toLowerCase());
     
-    // Draw icon
     page.drawText(icon, {
       x: 60,
       y: eventY + 10,
       size: 12,
       font: font,
+      color: rgb(0.2, 0.2, 0.2),
     });
     
-    // Draw event text
     page.drawText(event, {
       x: 85,
       y: eventY + 10,
@@ -195,7 +194,6 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
       color: rgb(0.2, 0.2, 0.2),
     });
     
-    // Draw timestamp
     const timestamp = getISTTimestamp();
     page.drawText(timestamp, {
       x: 85,
