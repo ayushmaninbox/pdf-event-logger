@@ -1,11 +1,11 @@
-// Simple array to store events
+// Real-world event log examples
 const events = [
-  "User 1 created doc",
-  "User 2 opened doc",
-  "User 2 signed doc",
-  "User 3 reviewed doc",
-  "User 1 updated doc",
-  "Admin approved doc"
+  "Document created by Sarah Chen (sarah.chen@company.com)",
+  "Document emailed to David Miller (david.m@company.com) for signature",
+  "Document viewed by David Miller (david.m@company.com)",
+  "David Miller (david.m@company.com) entered valid password",
+  "Document e-signed by David Miller (david.m@company.com)",
+  "Signed document emailed to Sarah Chen (sarah.chen@company.com)"
 ];
 
 export function getEvents() {

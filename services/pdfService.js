@@ -25,19 +25,21 @@ function getISTTimestamp() {
 async function drawSectionTitle(page, text, approach, y, font) {
   const auditText = `Audit Trail ${approach === 'append' ? '(Append Page)' : '(Merge PDF)'}`;
   
+  // Draw title
   page.drawText(auditText, {
-    x: 50,
+    x: 40,
     y: y - 10,
     size: 24,
     font,
     color: rgb(0.2, 0.2, 0.2),
   });
 
+  // Draw separator line
   page.drawLine({
-    start: { x: 50, y: y - 20 },
-    end: { x: page.getSize().width - 50, y: y - 20 },
+    start: { x: 40, y: y - 30 },
+    end: { x: page.getSize().width - 40, y: y - 30 },
     thickness: 1,
-    color: rgb(0.8, 0.8, 0.8),
+    color: rgb(0.85, 0.85, 0.85),
   });
 }
 
@@ -45,25 +47,37 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  page.drawText('Document Details', {
-    x: 50,
+  // Draw section title
+  page.drawText('Details', {
+    x: 40,
     y: y - 35,
-    size: 16,
+    size: 18,
     font: boldFont,
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  const labelX = 50;
+  // Draw content box with light border
+  page.drawRectangle({
+    x: 40,
+    y: y - 140,
+    width: page.getSize().width - 80,
+    height: 90,
+    borderColor: rgb(0.9, 0.9, 0.9),
+    borderWidth: 1,
+  });
+
+  const labelX = 60;
   const valueX = 200;
   const startY = y - 70;
-  const lineHeight = 25;
+  const lineHeight = 30;
   
-  page.drawText('Document Name:', {
+  // File name
+  page.drawText('FILE NAME', {
     x: labelX,
     y: startY,
-    size: 11,
+    size: 10,
     font: boldFont,
-    color: rgb(0.4, 0.4, 0.4),
+    color: rgb(0.5, 0.5, 0.5),
   });
   
   page.drawText(fileName, {
@@ -74,29 +88,39 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  page.drawText('Status:', {
+  // Status
+  page.drawText('STATUS', {
     x: labelX,
     y: startY - lineHeight,
-    size: 11,
+    size: 10,
     font: boldFont,
-    color: rgb(0.4, 0.4, 0.4),
+    color: rgb(0.5, 0.5, 0.5),
   });
   
-  page.drawText('Verified', {
+  // Draw status with dot
+  page.drawCircle({
     x: valueX,
+    y: startY - lineHeight + 4,
+    size: 3,
+    color: rgb(0.2, 0.7, 0.2),
+  });
+  
+  page.drawText('Signed', {
+    x: valueX + 10,
     y: startY - lineHeight,
     size: 11,
     font: font,
-    color: rgb(0.2, 0.6, 0.2),
+    color: rgb(0.2, 0.2, 0.2),
   });
   
+  // Timestamp
   const timestamp = getISTTimestamp();
-  page.drawText('Verification Time:', {
+  page.drawText('STATUS TIMESTAMP', {
     x: labelX,
     y: startY - (lineHeight * 2),
-    size: 11,
+    size: 10,
     font: boldFont,
-    color: rgb(0.4, 0.4, 0.4),
+    color: rgb(0.5, 0.5, 0.5),
   });
   
   page.drawText(timestamp, {
@@ -107,47 +131,62 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  return startY - (lineHeight * 3) - 20;
+  return startY - (lineHeight * 3) - 40;
 }
 
 async function drawActivitySection(page, pdfDoc, events, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
-  page.drawText('Activity Timeline', {
-    x: 50,
+  // Draw section title
+  page.drawText('Activity', {
+    x: 40,
     y: y - 35,
-    size: 16,
+    size: 18,
     font: boldFont,
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  const startY = y - 70;
-  const lineHeight = 30;
+  const startY = y - 80;
+  const lineHeight = 50;
   
+  // Draw content box with light border
+  page.drawRectangle({
+    x: 40,
+    y: startY - (events.length * lineHeight) + 20,
+    width: page.getSize().width - 80,
+    height: events.length * lineHeight,
+    borderColor: rgb(0.9, 0.9, 0.9),
+    borderWidth: 1,
+  });
+
   events.forEach((event, index) => {
     const eventY = startY - (index * lineHeight);
     
-    page.drawText('•', {
-      x: 50,
-      y: eventY,
-      size: 11,
-      font: font,
-      color: rgb(0.4, 0.4, 0.4),
-    });
+    // Draw separator line between events
+    if (index > 0) {
+      page.drawLine({
+        start: { x: 40, y: eventY + 35 },
+        end: { x: page.getSize().width - 40, y: eventY + 35 },
+        thickness: 1,
+        color: rgb(0.9, 0.9, 0.9),
+      });
+    }
     
+    // Draw event text
     page.drawText(event, {
-      x: 65,
+      x: 60,
       y: eventY,
       size: 11,
       font: font,
       color: rgb(0.2, 0.2, 0.2),
     });
     
+    // Draw timestamp
     const timestamp = getISTTimestamp();
     page.drawText(timestamp, {
-      x: page.getSize().width - 180,
-      y: eventY,
+      x: 60,
+      y: eventY - 20,
       size: 10,
       font: font,
       color: rgb(0.5, 0.5, 0.5),
