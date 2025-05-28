@@ -194,6 +194,20 @@ async function drawActivitySection(page, pdfDoc, events, y) {
   });
 }
 
+async function drawFooter(page, pdfDoc) {
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const { width, height } = page.getSize();
+  
+  // Draw Cloudbyz text at the bottom
+  page.drawText('cloudbyz', {
+    x: width / 2 - 25,
+    y: 30,
+    size: 12,
+    font: font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+}
+
 export async function appendEventPage(pdfPath, events) {
   try {
     const pdfBytes = await fs.readFile(pdfPath);
@@ -204,6 +218,7 @@ export async function appendEventPage(pdfPath, events) {
     await drawSectionTitle(page, 'Audit Trail', 'append', height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page, pdfDoc, path.basename(pdfPath), height - 150);
     await drawActivitySection(page, pdfDoc, events, activityY);
+    await drawFooter(page, pdfDoc);
     
     const modifiedPdfBytes = await pdfDoc.save();
     const outputPath = path.join(outputDir, `modified-${path.basename(pdfPath)}`);
@@ -225,6 +240,7 @@ export async function createAndMergePdf(pdfPath, events) {
     await drawSectionTitle(page, 'Audit Trail', 'merge', height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page, eventsPdfDoc, path.basename(pdfPath), height - 150);
     await drawActivitySection(page, eventsPdfDoc, events, activityY);
+    await drawFooter(page, eventsPdfDoc);
     
     const eventsPdfBytes = await eventsPdfDoc.save();
     
