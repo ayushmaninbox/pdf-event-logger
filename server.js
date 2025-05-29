@@ -88,7 +88,7 @@ async function drawSectionTitle(page, text, fileName, y, font) {
   // Calculate text width and wrap if needed
   const fontSize = 24;
   const maxWidth = page.getSize().width - 80;
-  const words = auditText.split(' ');
+  const words = auditText.split(' '); // Title words array
   let line = '';
   let yOffset = y - 10;
 
@@ -155,9 +155,9 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.98, 0.98, 0.98),
   });
 
-  const labelX = 60;
-  const valueX = 200;
-  const startY = y - 70;
+  const labelX = 60; // X position for labels
+  const valueX = 200; // X position for values
+  const startY = y - 70; // Starting Y position
   const lineHeight = 30;
   
   page.drawText('FILE NAME', {
@@ -216,7 +216,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  return startY - (lineHeight * 3) - 40;
+  return startY - (lineHeight * 3) - 40; // Return new y position
 }
 
 // Maps event text to corresponding icon paths
@@ -361,8 +361,8 @@ async function appendEventPage(pdfPath, events) {
     const page1 = pdfDoc.addPage(); 
     const { height } = page1.getSize();
     
-    const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY);
+    const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold)); // Y after title
+    const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY); // Y after details
     await drawActivitySection(page1, pdfDoc, events, 0, 6, activityY, true);
     await drawFooter(page1, pdfDoc);
     
@@ -387,9 +387,9 @@ async function createAndMergePdf(pdfPath, events) {
   try {
     const fileName = path.basename(pdfPath);
     const originalFileName = getOriginalFileName(fileName);
-    const eventsPdfDoc = await PDFDocument.create();
+    const eventsPdfDoc = await PDFDocument.create(); // New PDF document
     
-    const page1 = eventsPdfDoc.addPage();
+    const page1 = eventsPdfDoc.addPage(); // First page for events
     const { height } = page1.getSize();
     
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
@@ -406,7 +406,7 @@ async function createAndMergePdf(pdfPath, events) {
     
     const originalPdfBytes = await fs.readFile(pdfPath);
     const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
-    const mergedPdfDoc = await PDFDocument.create();
+    const mergedPdfDoc = await PDFDocument.create(); // New merged PDF
     
     const originalPages = await mergedPdfDoc.copyPages(originalPdfDoc, originalPdfDoc.getPageIndices());
     originalPages.forEach((page) => mergedPdfDoc.addPage(page));
