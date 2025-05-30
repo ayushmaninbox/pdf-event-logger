@@ -1,4 +1,245 @@
-udes('review')) return path.join(imagesDir, 'review.png');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs-extra';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Directory setup
+const uploadsDir = path.join(__dirname, 'uploads');
+const outputDir = path.join(__dirname, 'output');
+const imagesDir = path.join(__dirname, 'images');
+
+await fs.ensureDir(uploadsDir);
+await fs.ensureDir(outputDir);
+
+// Calculate events per page based on page height
+function calculateEventsPerPage(pageHeight) {
+  const headerHeight = 150; // Space for title and details
+  const footerHeight = 50; // Space for footer
+  const eventHeight = 50; // Height per event
+  const marginTop = 50; // Top margin
+  const marginBottom = 70; // Increased bottom margin to prevent footer collision
+  
+  const availableHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+  return Math.floor(availableHeight / eventHeight);
+}
+
+// Real-world event log examples with more activities
+const events = [
+  "Document created by Sarah Chen (sarah.chen@cloudbyz.com)",
+  "Document emailed to David Miller (david.m@cloudbyz.com) for signature",
+  "Document viewed by David Miller (david.m@cloudbyz.com)",
+  "David Miller (david.m@cloudbyz.com) entered valid password",
+  "Document e-signed by David Miller (david.m@cloudbyz.com)",
+  "Signed document emailed to Sarah Chen (sarah.chen@cloudbyz.com)",
+  "Document viewed by Sarah Chen (sarah.chen@cloudbyz.com)",
+  "Sarah Chen (sarah.chen@cloudbyz.com) approved the document",
+  "Document routed to Legal Department for review",
+  "Document viewed by John Smith (john.s@cloudbyz.com) from Legal",
+  "Legal review completed by John Smith (john.s@cloudbyz.com)",
+  "Document sent to Finance Department for processing",
+  "Document viewed by Emily Wong (emily.w@cloudbyz.com) from Finance",
+  "Payment terms verified by Finance Department",
+  "Document archived in compliance repository"
+];
+
+function getEvents() {
+  return events;
+}
+
+function addEvent(event) {
+  events.push(event);
+  return events;
+}
+
+function clearEvents() {
+  events.length = 0;
+  return events;
+}
+
+// Time zone utility function to get IST timestamp
+function getISTTimestamp() {
+  const date = new Date();
+  return date.toLocaleString('en-US', { 
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }) + ' IST';
+}
+
+// Extracts the original file name from the given file name
+function getOriginalFileName(fileName) {
+  const match = fileName.match(/\d+-\d+-(.*)/);
+  return match ? match[1] : fileName;
+}
+
+// PDF Styling functions
+async function drawSectionTitle(page, text, fileName, y, font) {
+  const originalFileName = getOriginalFileName(fileName);
+  const auditText = `Audit Trail - ${originalFileName}`;
+  
+  // Draw blue border
+  page.drawRectangle({
+    x: 20,
+    y: 20,
+    width: page.getSize().width - 40,
+    height: page.getSize().height - 40,
+    borderColor: rgb(0.0, 0.47, 0.85),
+    borderWidth: 2,
+  });
+
+  // Calculate text width and wrap if needed
+  const fontSize = 24;
+  const maxWidth = page.getSize().width - 80;
+  const words = auditText.split(' ');
+  let line = '';
+  let yOffset = y - 10;
+
+  for (const word of words) {
+    const testLine = line + (line ? ' ' : '') + word;
+    const textWidth = font.widthOfTextAtSize(testLine, fontSize);
+    
+    if (textWidth > maxWidth && line) {
+      page.drawText(line, {
+        x: 40,
+        y: yOffset,
+        size: fontSize,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+      line = word;
+      yOffset -= fontSize + 5;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line) {
+    page.drawText(line, {
+      x: 40,
+      y: yOffset,
+      size: fontSize,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+  }
+
+  page.drawLine({
+    start: { x: 40, y: yOffset - 20 },
+    end: { x: page.getSize().width - 40, y: yOffset - 20 },
+    thickness: 1,
+    color: rgb(0.85, 0.85, 0.85),
+  });
+
+  return yOffset - 40;
+}
+
+// Draws the details section with file name, status, and timestamp
+async function drawDetailsSection(page, pdfDoc, fileName, y) {
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const originalFileName = getOriginalFileName(fileName);
+  
+  page.drawText('Details', {
+    x: 40,
+    y: y - 35,
+    size: 18,
+    font: boldFont,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  
+  page.drawRectangle({
+    x: 40,
+    y: y - 140,
+    width: page.getSize().width - 80,
+    height: 90,
+    borderColor: rgb(0.9, 0.9, 0.9),
+    borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
+  });
+
+  const labelX = 60;
+  const valueX = 200;
+  const startY = y - 70;
+  const lineHeight = 30;
+  
+  page.drawText('FILE NAME', {
+    x: labelX,
+    y: startY,
+    size: 10,
+    font: boldFont,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  
+  page.drawText(originalFileName, {
+    x: valueX,
+    y: startY,
+    size: 11,
+    font: font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  
+  page.drawText('STATUS', {
+    x: labelX,
+    y: startY - lineHeight,
+    size: 10,
+    font: boldFont,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  
+  page.drawCircle({
+    x: valueX,
+    y: startY - lineHeight + 4,
+    size: 3,
+    color: rgb(0.2, 0.7, 0.2),
+  });
+  
+  page.drawText('Signed', {
+    x: valueX + 10,
+    y: startY - lineHeight,
+    size: 11,
+    font: font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  
+  const timestamp = getISTTimestamp();
+  page.drawText('STATUS TIMESTAMP', {
+    x: labelX,
+    y: startY - (lineHeight * 2),
+    size: 10,
+    font: boldFont,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  
+  page.drawText(timestamp, {
+    x: valueX,
+    y: startY - (lineHeight * 2),
+    size: 11,
+    font: font,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  
+  return startY - (lineHeight * 3) - 40;
+}
+
+// Maps event text to corresponding icon paths
+function getEventIcon(eventText) {
+  if (eventText.includes('created')) return path.join(imagesDir, 'created.png');
+  if (eventText.includes('emailed')) return path.join(imagesDir, 'emailed.png');
+  if (eventText.includes('viewed')) return path.join(imagesDir, 'viewed.png');
+  if (eventText.includes('password')) return path.join(imagesDir, 'password.png');
+  if (eventText.includes('signed')) return path.join(imagesDir, 'signed.png');
+  if (eventText.includes('approved')) return path.join(imagesDir, 'approved.png');
+  if (eventText.includes('review')) return path.join(imagesDir, 'review.png');
   if (eventText.includes('verified')) return path.join(imagesDir, 'verified.png');
   if (eventText.includes('archived')) return path.join(imagesDir, 'archived.png');
   if (eventText.includes('processing')) return path.join(imagesDir, 'processing.png');
@@ -31,6 +272,19 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   const startY = y - 80;
   const lineHeight = 50;
   const eventsOnPage = events.slice(startIndex, endIndex);
+  
+  // Calculate the height needed for events
+  const eventsHeight = eventsOnPage.length * lineHeight + 20;
+  
+  // Ensure we leave enough space for the footer
+  const minFooterSpace = 70; // Increased space for footer
+  const bottomY = startY - eventsHeight;
+  
+  if (bottomY < minFooterSpace) {
+    // If there's not enough space, reduce the number of events on this page
+    const maxEvents = Math.floor((startY - minFooterSpace - 20) / lineHeight);
+    eventsOnPage.splice(maxEvents);
+  }
   
   page.drawRectangle({
     x: 40,
@@ -97,6 +351,8 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
       color: rgb(0.5, 0.5, 0.5),
     });
   }
+  
+  return eventsOnPage.length;
 }
 
 // Draws the footer with the Cloudbyz logo
@@ -111,7 +367,7 @@ async function drawFooter(page, pdfDoc) {
     
     page.drawImage(logo, {
       x: 40,
-      y: 30,
+      y: 30, // Fixed position from bottom
       width: logoWidth,
       height: logoHeight
     });
@@ -123,30 +379,44 @@ async function drawFooter(page, pdfDoc) {
 // Create event log pages with automatic pagination
 async function createEventLogPages(pdfDoc, fileName, events) {
   const pages = [];
-  const eventsPerPage = calculateEventsPerPage(pdfDoc.getPage(0).getSize().height);
-  const totalPages = Math.ceil(events.length / eventsPerPage);
+  let currentPage = pdfDoc.addPage();
+  const { height } = currentPage.getSize();
   
-  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
-    const page = pdfDoc.addPage();
-    const { height } = page.getSize();
+  let remainingEvents = [...events];
+  let pageNum = 0;
+  
+  while (remainingEvents.length > 0) {
     const isFirstPage = pageNum === 0;
     
-    const titleY = await drawSectionTitle(page, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold), isFirstPage);
+    if (!isFirstPage) {
+      currentPage = pdfDoc.addPage();
+    }
+    
+    const titleY = await drawSectionTitle(currentPage, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     
     let contentY;
     if (isFirstPage) {
-      contentY = await drawDetailsSection(page, pdfDoc, fileName, titleY);
+      contentY = await drawDetailsSection(currentPage, pdfDoc, fileName, titleY);
     } else {
       contentY = height - 150;
     }
     
-    const startIndex = pageNum * eventsPerPage;
-    const endIndex = Math.min((pageNum + 1) * eventsPerPage, events.length);
+    const eventsPerPage = calculateEventsPerPage(height);
+    const eventsOnPage = await drawActivitySection(
+      currentPage,
+      pdfDoc,
+      remainingEvents,
+      0,
+      eventsPerPage,
+      contentY,
+      isFirstPage
+    );
     
-    await drawActivitySection(page, pdfDoc, events, startIndex, endIndex, contentY, isFirstPage);
-    await drawFooter(page, pdfDoc);
+    await drawFooter(currentPage, pdfDoc);
     
-    pages.push(page);
+    remainingEvents = remainingEvents.slice(eventsOnPage);
+    pages.push(currentPage);
+    pageNum++;
   }
   
   return pages;
