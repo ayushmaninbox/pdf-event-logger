@@ -186,6 +186,15 @@ function getEventIcon(eventText) {
   return null;
 }
 
+// Calculate how many events can fit on a single page
+function calculateEventsPerPage(pageHeight) {
+  const topMargin = 150; // Space for title and details
+  const bottomMargin = 50; // Space for footer
+  const eventHeight = 50; // Height of each event entry
+  const availableHeight = pageHeight - topMargin - bottomMargin;
+  return Math.floor(availableHeight / eventHeight);
+}
+
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -305,18 +314,23 @@ async function appendEventPage(pdfPath, events) {
     const pdfDoc = await PDFDocument.load(pdfBytes); 
     const fileName = path.basename(pdfPath);
     
-    const page1 = pdfDoc.addPage(); 
+    const page1 = pdfDoc.addPage();
     const { height } = page1.getSize();
+    
+    const eventsPerPage = calculateEventsPerPage(height);
+    const needsSecondPage = events.length > eventsPerPage;
     
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY);
-    await drawActivitySection(page1, pdfDoc, events, 0, 6, activityY, true);
+    await drawActivitySection(page1, pdfDoc, events, 0, needsSecondPage ? eventsPerPage : events.length, activityY, true);
     await drawFooter(page1, pdfDoc);
     
-    const page2 = pdfDoc.addPage();
-    await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-    await drawActivitySection(page2, pdfDoc, events, 6, events.length, height - 150);
-    await drawFooter(page2, pdfDoc);
+    if (needsSecondPage) {
+      const page2 = pdfDoc.addPage();
+      await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+      await drawActivitySection(page2, pdfDoc, events, eventsPerPage, events.length, height - 150);
+      await drawFooter(page2, pdfDoc);
+    }
     
     const modifiedPdfBytes = await pdfDoc.save();
     const outputPath = path.join(outputDir, `${fileName}`);
@@ -333,19 +347,23 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
   try {
     const fileName = path.basename(originalPdfPath);
     const eventsPdfDoc = await PDFDocument.create();
-
     const page1 = eventsPdfDoc.addPage();
     const { height } = page1.getSize();
+    
+    const eventsPerPage = calculateEventsPerPage(height);
+    const needsSecondPage = eventlogs.length > eventsPerPage;
 
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, eventsPdfDoc, fileName, titleY);
-    await drawActivitySection(page1, eventsPdfDoc, eventlogs, 0, 6, activityY, true);
+    await drawActivitySection(page1, eventsPdfDoc, eventlogs, 0, needsSecondPage ? eventsPerPage : eventlogs.length, activityY, true);
     await drawFooter(page1, eventsPdfDoc);
 
-    const page2 = eventsPdfDoc.addPage();
-    await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    await drawActivitySection(page2, eventsPdfDoc, eventlogs, 6, eventlogs.length, height - 150);
-    await drawFooter(page2, eventsPdfDoc);
+    if (needsSecondPage) {
+      const page2 = eventsPdfDoc.addPage();
+      await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+      await drawActivitySection(page2, eventsPdfDoc, eventlogs, eventsPerPage, eventlogs.length, height - 150);
+      await drawFooter(page2, eventsPdfDoc);
+    }
 
     const eventsPdfBytes = await eventsPdfDoc.save();
 
@@ -357,7 +375,7 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
     originalPages.forEach((page) => mergedPdfDoc.addPage(page));
 
     const eventsPdfDoc2 = await PDFDocument.load(eventsPdfBytes);
-    const eventsPages = await mergedPdfDoc.copyPages(eventsPdfDoc2, [0, 1]);
+    const eventsPages = await mergedPdfDoc.copyPages(eventsPdfDoc2, eventsPdfDoc2.getPageIndices());
     eventsPages.forEach((page) => mergedPdfDoc.addPage(page));
 
     const mergedPdfBytes = await mergedPdfDoc.save();
@@ -414,10 +432,11 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
       const response = await fetch('http://localhost:3000/events');
       const events = await response.json();
       
+      let outputPath;
       if (approach === 'append') {
-        const outputPath = await appendEventPage(filePath, events);
+        outputPath = await appendEventPage(filePath, events);
       } else {
-        const outputPath = await createAndMergePdf(filePath, events);
+        outputPath = await createAndMergePdf(filePath, events);
       }
       
       res.setHeader('Content-Type', 'application/pdf');
