@@ -415,9 +415,9 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
       const events = await response.json();
       
       if (approach === 'append') {
-        outputPath = await appendEventPage(filePath, events);
+        const outputPath = await appendEventPage(filePath, events);
       } else {
-        outputPath = await createAndMergePdf(filePath, events);
+        const outputPath = await createAndMergePdf(filePath, events);
       }
       
       res.setHeader('Content-Type', 'application/pdf');
