@@ -100,7 +100,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   
   page.drawRectangle({
     x: 40,
-    y: y - 110, // Reduced from -140
+    y: y - 130, // Reduced from -140
     width: page.getSize().width - 80,
     height: 90,
     borderColor: rgb(0.9, 0.9, 0.9),
@@ -110,7 +110,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 
   const labelX = 60;
   const valueX = 200;
-  const startY = y - 50; // Reduced from -70
+  const startY = y - 60; // Reduced from -70
   const lineHeight = 25; // Reduced from 30
   
   page.drawText('FILE NAME', {
@@ -222,7 +222,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, s
     });
   }
   
-  const eventsStartY = startY - 60; // Reduced from -80
+  const eventsStartY = startY - 80; // Reduced from -80
   const lineHeight = 50;
   const eventsOnPage = events.slice(startIndex, endIndex);
   
