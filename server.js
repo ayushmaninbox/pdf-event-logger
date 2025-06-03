@@ -400,18 +400,6 @@ const PORT = 5000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API endpoint to get event logs
-app.get('/api/events', (req, res) => {
-  try {
-    const response = await fetch('https://api.example.com/events');
-    const events = await response.json();
-    res.json(events);
-  } catch (error) {
-    console.error('Error fetching events:', error);
-    res.status(500).json({ error: 'Failed to fetch events' });
-  }
-});
-
 app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
@@ -422,10 +410,8 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
     const fileName = req.file.filename;
     const approach = req.body.approach || 'append';
     
-    let outputPath;
-    
     try {
-      const response = await fetch('http://localhost:5000/api/events');
+      const response = await fetch('http://localhost:3000/events');
       const events = await response.json();
       
       if (approach === 'append') {
