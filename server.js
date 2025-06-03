@@ -4,12 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { getEvents } from './eventLogs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Directory setup
 const uploadsDir = path.join(__dirname, 'uploads');
 const outputDir = path.join(__dirname, 'output');
 const imagesDir = path.join(__dirname, 'images');
@@ -17,7 +15,6 @@ const imagesDir = path.join(__dirname, 'images');
 await fs.ensureDir(uploadsDir);
 await fs.ensureDir(outputDir);
 
-// Time zone utility function to get IST timestamp
 function getISTTimestamp() {
   const date = new Date();
   return date.toLocaleString('en-US', { 
@@ -32,11 +29,9 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
-// PDF Styling functions
 async function drawSectionTitle(page, text, fileName, y, font) {
   const auditText = `Audit Trail - ${fileName}`;
   
-  // Draw blue border
   page.drawRectangle({
     x: 20,
     y: 20,
@@ -46,7 +41,6 @@ async function drawSectionTitle(page, text, fileName, y, font) {
     borderWidth: 2,
   });
 
-  // Calculate text width and wrap if needed
   const fontSize = 24;
   const maxWidth = page.getSize().width - 80;
   const words = auditText.split(' ');
@@ -350,7 +344,7 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
 
     const page2 = eventsPdfDoc.addPage();
     await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-    await drawActivitySection(page2, eventsPdfDoc, eventlogs, 6, events.length, height - 150);
+    await drawActivitySection(page2, eventsPdfDoc, eventlogs, 6, eventlogs.length, height - 150);
     await drawFooter(page2, eventsPdfDoc);
 
     const eventsPdfBytes = await eventsPdfDoc.save();
@@ -377,7 +371,6 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
   }
 }
 
-// Configure multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
@@ -407,6 +400,18 @@ const PORT = 5000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// API endpoint to get event logs
+app.get('/api/events', (req, res) => {
+  try {
+    const response = await fetch('https://api.example.com/events');
+    const events = await response.json();
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
 app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
   try {
     if (!req.file) {
@@ -418,22 +423,29 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
     const approach = req.body.approach || 'append';
     
     let outputPath;
-    const events = getEvents();
     
-    if (approach === 'append') {
-      outputPath = await appendEventPage(filePath, events);
-    } else {
-      outputPath = await createAndMergePdf(filePath, events);
-    }
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    
-    res.download(outputPath, fileName, (err) => {
-      if (err) {
-        console.error('Error sending file:', err);
+    try {
+      const response = await fetch('http://localhost:5000/api/events');
+      const events = await response.json();
+      
+      if (approach === 'append') {
+        outputPath = await appendEventPage(filePath, events);
+      } else {
+        outputPath = await createAndMergePdf(filePath, events);
       }
-    });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      
+      res.download(outputPath, fileName, (err) => {
+        if (err) {
+          console.error('Error sending file:', err);
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      res.status(500).send('Error fetching events');
+    }
     
   } catch (error) {
     console.error('Error processing PDF:', error);
