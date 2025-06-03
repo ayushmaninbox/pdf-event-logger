@@ -39,16 +39,6 @@ function getEvents() {
   return events;
 }
 
-function addEvent(event) {
-  events.push(event);
-  return events;
-}
-
-function clearEvents() {
-  events.length = 0;
-  return events;
-}
-
 // Time zone utility function to get IST timestamp
 function getISTTimestamp() {
   const date = new Date();
@@ -64,16 +54,9 @@ function getISTTimestamp() {
   }) + ' IST';
 }
 
-// Extracts the original file name from the given file name
-function getOriginalFileName(fileName) {
-  const match = fileName.match(/\d+-\d+-(.*)/);
-  return match ? match[1] : fileName;
-}
-
 // PDF Styling functions
 async function drawSectionTitle(page, text, fileName, y, font) {
-  const originalFileName = getOriginalFileName(fileName);
-  const auditText = `Audit Trail - ${originalFileName}`;
+  const auditText = `Audit Trail - ${fileName}`;
   
   // Draw blue border
   page.drawRectangle({
@@ -135,7 +118,6 @@ async function drawSectionTitle(page, text, fileName, y, font) {
 async function drawDetailsSection(page, pdfDoc, fileName, y) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const originalFileName = getOriginalFileName(fileName);
   
   page.drawText('Details', {
     x: 40,
@@ -168,7 +150,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.5, 0.5, 0.5),
   });
   
-  page.drawText(originalFileName, {
+  page.drawText(fileName, {
     x: valueX,
     y: startY,
     size: 11,
@@ -356,13 +338,12 @@ async function appendEventPage(pdfPath, events) {
     const pdfBytes = await fs.readFile(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes); 
     const fileName = path.basename(pdfPath);
-    const originalFileName = getOriginalFileName(fileName);
     
     const page1 = pdfDoc.addPage(); 
     const { height } = page1.getSize();
     
-    const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold)); // Y after title
-    const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY); // Y after details
+    const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+    const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY);
     await drawActivitySection(page1, pdfDoc, events, 0, 6, activityY, true);
     await drawFooter(page1, pdfDoc);
     
@@ -372,7 +353,7 @@ async function appendEventPage(pdfPath, events) {
     await drawFooter(page2, pdfDoc);
     
     const modifiedPdfBytes = await pdfDoc.save();
-    const outputPath = path.join(outputDir, `${originalFileName.replace('.pdf', '')}_logged.pdf`);
+    const outputPath = path.join(outputDir, `${fileName.replace('.pdf', '')}_logged.pdf`);
     await fs.writeFile(outputPath, modifiedPdfBytes);
     
     return outputPath;
@@ -386,10 +367,9 @@ async function appendEventPage(pdfPath, events) {
 async function createAndMergePdf(pdfPath, events) {
   try {
     const fileName = path.basename(pdfPath);
-    const originalFileName = getOriginalFileName(fileName);
-    const eventsPdfDoc = await PDFDocument.create(); // New PDF document
+    const eventsPdfDoc = await PDFDocument.create();
     
-    const page1 = eventsPdfDoc.addPage(); // First page for events
+    const page1 = eventsPdfDoc.addPage();
     const { height } = page1.getSize();
     
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
@@ -406,7 +386,7 @@ async function createAndMergePdf(pdfPath, events) {
     
     const originalPdfBytes = await fs.readFile(pdfPath);
     const originalPdfDoc = await PDFDocument.load(originalPdfBytes);
-    const mergedPdfDoc = await PDFDocument.create(); // New merged PDF
+    const mergedPdfDoc = await PDFDocument.create();
     
     const originalPages = await mergedPdfDoc.copyPages(originalPdfDoc, originalPdfDoc.getPageIndices());
     originalPages.forEach((page) => mergedPdfDoc.addPage(page));
@@ -416,7 +396,7 @@ async function createAndMergePdf(pdfPath, events) {
     eventsPages.forEach((page) => mergedPdfDoc.addPage(page));
     
     const mergedPdfBytes = await mergedPdfDoc.save();
-    const outputPath = path.join(outputDir, `${originalFileName.replace('.pdf', '')}_logged.pdf`);
+    const outputPath = path.join(outputDir, `${fileName.replace('.pdf', '')}_logged.pdf`);
     await fs.writeFile(outputPath, mergedPdfBytes);
     
     return outputPath;
@@ -426,14 +406,13 @@ async function createAndMergePdf(pdfPath, events) {
   }
 }
 
-// Ensure the uploads directory exists
+// Configure multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    cb(null, file.originalname);
   }
 });
 
@@ -479,9 +458,9 @@ app.post('/api/upload', upload.single('pdfFile'), async (req, res) => {
     }
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="modified-${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     
-    res.download(outputPath, `modified-${fileName}`, (err) => {
+    res.download(outputPath, fileName, (err) => {
       if (err) {
         console.error('Error sending file:', err);
       }
