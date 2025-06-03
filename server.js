@@ -172,6 +172,15 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   return startY - (lineHeight * 3) - 40;
 }
 
+// Calculate how many events can fit on a single page
+function calculateEventsPerPage(pageHeight) {
+  const topMargin = 150; // Space for title and details
+  const bottomMargin = 80; // Increased bottom margin for footer
+  const eventHeight = 50; // Height of each event entry
+  const availableHeight = pageHeight - topMargin - bottomMargin;
+  return Math.floor(availableHeight / eventHeight);
+}
+
 function getEventIcon(eventText) {
   if (eventText.includes('created')) return path.join(imagesDir, 'created.png');
   if (eventText.includes('emailed')) return path.join(imagesDir, 'emailed.png');
@@ -184,15 +193,6 @@ function getEventIcon(eventText) {
   if (eventText.includes('archived')) return path.join(imagesDir, 'archived.png');
   if (eventText.includes('processing')) return path.join(imagesDir, 'processing.png');
   return null;
-}
-
-// Calculate how many events can fit on a single page
-function calculateEventsPerPage(pageHeight) {
-  const topMargin = 150; // Space for title and details
-  const bottomMargin = 50; // Space for footer
-  const eventHeight = 50; // Height of each event entry
-  const availableHeight = pageHeight - topMargin - bottomMargin;
-  return Math.floor(availableHeight / eventHeight);
 }
 
 async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
@@ -299,7 +299,7 @@ async function drawFooter(page, pdfDoc) {
     
     page.drawImage(logo, {
       x: 40,
-      y: 30,
+      y: 50, // Increased Y position to prevent overlap
       width: logoWidth,
       height: logoHeight
     });
