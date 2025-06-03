@@ -92,7 +92,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   
   page.drawText('Details', {
     x: 40,
-    y: y - 35,
+    y: y - 25, // Reduced from -35
     size: 18,
     font: boldFont,
     color: rgb(0.2, 0.2, 0.2),
@@ -100,7 +100,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   
   page.drawRectangle({
     x: 40,
-    y: y - 140,
+    y: y - 110, // Reduced from -140
     width: page.getSize().width - 80,
     height: 90,
     borderColor: rgb(0.9, 0.9, 0.9),
@@ -110,8 +110,8 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 
   const labelX = 60;
   const valueX = 200;
-  const startY = y - 70;
-  const lineHeight = 30;
+  const startY = y - 50; // Reduced from -70
+  const lineHeight = 25; // Reduced from 30
   
   page.drawText('FILE NAME', {
     x: labelX,
@@ -169,7 +169,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
     color: rgb(0.2, 0.2, 0.2),
   });
   
-  return startY - (lineHeight * 3) - 40;
+  return startY - (lineHeight * 3) - 20; // Reduced from -40
 }
 
 function calculateEventsPerPage(pageHeight, startY, isFirstPage = false) {
@@ -178,7 +178,6 @@ function calculateEventsPerPage(pageHeight, startY, isFirstPage = false) {
   const bottomMargin = 40;
   const eventHeight = 50;
   
-  // First page has details section, subsequent pages start from title
   const availableHeight = isFirstPage 
     ? startY - bottomMargin - logoHeight - logoSpacing
     : pageHeight - 150 - bottomMargin - logoHeight - logoSpacing;
@@ -216,14 +215,14 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, s
   } else {
     page.drawText('Activity', {
       x: 40,
-      y: startY - 35,
+      y: startY - 25, // Reduced from -35
       size: 18,
       font: boldFont,
       color: rgb(0.2, 0.2, 0.2),
     });
   }
   
-  const eventsStartY = startY - 80;
+  const eventsStartY = startY - 60; // Reduced from -80
   const lineHeight = 50;
   const eventsOnPage = events.slice(startIndex, endIndex);
   
