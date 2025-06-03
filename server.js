@@ -172,15 +172,19 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
   return startY - (lineHeight * 3) - 40;
 }
 
-function calculateEventsPerPage(pageHeight, startY) {
-  const logoHeight = 60; // Increased logo area height
-  const logoSpacing = 40; // Increased spacing above logo
-  const bottomMargin = 40; // Space from bottom of page
-  const eventHeight = 50; // Height of each event entry
+function calculateEventsPerPage(pageHeight, startY, isFirstPage = false) {
+  const logoHeight = 60;
+  const logoSpacing = 40;
+  const bottomMargin = 40;
+  const eventHeight = 50;
   
-  const availableHeight = startY - bottomMargin - logoHeight - logoSpacing;
+  // First page has details section, subsequent pages start from title
+  const availableHeight = isFirstPage 
+    ? startY - bottomMargin - logoHeight - logoSpacing
+    : pageHeight - 150 - bottomMargin - logoHeight - logoSpacing;
+    
   const maxEvents = Math.floor(availableHeight / eventHeight);
-  return Math.max(0, maxEvents); // Ensure we don't return negative values
+  return Math.max(0, maxEvents);
 }
 
 function getEventIcon(eventText) {
@@ -223,10 +227,8 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, s
   const lineHeight = 50;
   const eventsOnPage = events.slice(startIndex, endIndex);
   
-  // Calculate the height needed for all events
   const eventsHeight = eventsOnPage.length * lineHeight + 20;
   
-  // Draw the background rectangle
   page.drawRectangle({
     x: 40,
     y: eventsStartY - eventsHeight + 20,
@@ -305,7 +307,7 @@ async function drawFooter(page, pdfDoc) {
     
     page.drawImage(logo, {
       x: 40,
-      y: 60, // Increased Y position for more space
+      y: 60,
       width: logoWidth,
       height: logoHeight
     });
@@ -326,29 +328,20 @@ async function appendEventPage(pdfPath, events) {
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY);
     
-    // Calculate events per page based on the actual starting Y position
-    const eventsPerPage = calculateEventsPerPage(height, activityY);
+    const eventsPerPage = calculateEventsPerPage(height, activityY, true);
     const needsSecondPage = events.length > eventsPerPage;
     
     await drawActivitySection(page1, pdfDoc, events, 0, needsSecondPage ? eventsPerPage : events.length, activityY, true);
     await drawFooter(page1, pdfDoc);
     
     if (needsSecondPage) {
-      const page2 = pdfDoc.addPage();
-      const titleY2 = await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-      const activityY2 = await drawDetailsSection(page2, pdfDoc, fileName, titleY2);
-      const remainingEventsPerPage = calculateEventsPerPage(height, activityY2);
-      await drawActivitySection(page2, pdfDoc, events, eventsPerPage, Math.min(events.length, eventsPerPage + remainingEventsPerPage), activityY2);
-      await drawFooter(page2, pdfDoc);
+      let currentIndex = eventsPerPage;
       
-      // If we still have more events, create additional pages
-      let currentIndex = eventsPerPage + remainingEventsPerPage;
       while (currentIndex < events.length) {
         const nextPage = pdfDoc.addPage();
         const nextTitleY = await drawSectionTitle(nextPage, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-        const nextActivityY = await drawDetailsSection(nextPage, pdfDoc, fileName, nextTitleY);
-        const nextPageEvents = calculateEventsPerPage(height, nextActivityY);
-        await drawActivitySection(nextPage, pdfDoc, events, currentIndex, Math.min(events.length, currentIndex + nextPageEvents), nextActivityY);
+        const nextPageEvents = calculateEventsPerPage(height, nextTitleY, false);
+        await drawActivitySection(nextPage, pdfDoc, events, currentIndex, Math.min(events.length, currentIndex + nextPageEvents), nextTitleY);
         await drawFooter(nextPage, pdfDoc);
         currentIndex += nextPageEvents;
       }
@@ -375,29 +368,20 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, eventsPdfDoc, fileName, titleY);
     
-    // Calculate events per page based on the actual starting Y position
-    const eventsPerPage = calculateEventsPerPage(height, activityY);
+    const eventsPerPage = calculateEventsPerPage(height, activityY, true);
     const needsSecondPage = eventlogs.length > eventsPerPage;
 
     await drawActivitySection(page1, eventsPdfDoc, eventlogs, 0, needsSecondPage ? eventsPerPage : eventlogs.length, activityY, true);
     await drawFooter(page1, eventsPdfDoc);
 
     if (needsSecondPage) {
-      const page2 = eventsPdfDoc.addPage();
-      const titleY2 = await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-      const activityY2 = await drawDetailsSection(page2, eventsPdfDoc, fileName, titleY2);
-      const remainingEventsPerPage = calculateEventsPerPage(height, activityY2);
-      await drawActivitySection(page2, eventsPdfDoc, eventlogs, eventsPerPage, Math.min(eventlogs.length, eventsPerPage + remainingEventsPerPage), activityY2);
-      await drawFooter(page2, eventsPdfDoc);
+      let currentIndex = eventsPerPage;
       
-      // If we still have more events, create additional pages
-      let currentIndex = eventsPerPage + remainingEventsPerPage;
       while (currentIndex < eventlogs.length) {
         const nextPage = eventsPdfDoc.addPage();
         const nextTitleY = await drawSectionTitle(nextPage, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-        const nextActivityY = await drawDetailsSection(nextPage, eventsPdfDoc, fileName, nextTitleY);
-        const nextPageEvents = calculateEventsPerPage(height, nextActivityY);
-        await drawActivitySection(nextPage, eventsPdfDoc, eventlogs, currentIndex, Math.min(eventlogs.length, currentIndex + nextPageEvents), nextActivityY);
+        const nextPageEvents = calculateEventsPerPage(height, nextTitleY, false);
+        await drawActivitySection(nextPage, eventsPdfDoc, eventlogs, currentIndex, Math.min(eventlogs.length, currentIndex + nextPageEvents), nextTitleY);
         await drawFooter(nextPage, eventsPdfDoc);
         currentIndex += nextPageEvents;
       }
