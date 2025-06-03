@@ -175,7 +175,7 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 // Calculate how many events can fit on a single page
 function calculateEventsPerPage(pageHeight) {
   const topMargin = 150; // Space for title and details
-  const bottomMargin = 80; // Increased bottom margin for footer
+  const bottomMargin = 120; // Increased bottom margin for footer
   const eventHeight = 50; // Height of each event entry
   const availableHeight = pageHeight - topMargin - bottomMargin;
   return Math.floor(availableHeight / eventHeight);
@@ -299,7 +299,7 @@ async function drawFooter(page, pdfDoc) {
     
     page.drawImage(logo, {
       x: 40,
-      y: 50, // Increased Y position to prevent overlap
+      y: 80,
       width: logoWidth,
       height: logoHeight
     });
