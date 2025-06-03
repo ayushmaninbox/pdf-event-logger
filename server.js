@@ -173,11 +173,14 @@ async function drawDetailsSection(page, pdfDoc, fileName, y) {
 }
 
 // Calculate how many events can fit on a single page
-function calculateEventsPerPage(pageHeight) {
-  const topMargin = 150; // Space for title and details
-  const logoAreaMargin = 130; // Space reserved for logo (100px) + 30px buffer
+function calculateEventsPerPage(pageHeight, startY) {
+  const logoHeight = 30; // Height of the logo
+  const logoSpacing = 20; // Additional spacing above logo
+  const logoAreaHeight = logoHeight + logoSpacing;
+  const bottomMargin = 150; // Space from bottom of page to logo area
   const eventHeight = 50; // Height of each event entry
-  const availableHeight = pageHeight - topMargin - logoAreaMargin;
+  
+  const availableHeight = startY - bottomMargin - logoAreaHeight;
   return Math.floor(availableHeight / eventHeight);
 }
 
@@ -195,14 +198,14 @@ function getEventIcon(eventText) {
   return null;
 }
 
-async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y, isFirstPage = false) {
+async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, startY, isFirstPage = false) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
   if (!isFirstPage) {
     page.drawText('Activity (Continued)', {
       x: 40,
-      y: y - 35,
+      y: startY - 35,
       size: 18,
       font: boldFont,
       color: rgb(0.2, 0.2, 0.2),
@@ -210,22 +213,26 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   } else {
     page.drawText('Activity', {
       x: 40,
-      y: y - 35,
+      y: startY - 35,
       size: 18,
       font: boldFont,
       color: rgb(0.2, 0.2, 0.2),
     });
   }
   
-  const startY = y - 80;
+  const eventsStartY = startY - 80;
   const lineHeight = 50;
   const eventsOnPage = events.slice(startIndex, endIndex);
   
+  // Calculate the height needed for all events
+  const eventsHeight = eventsOnPage.length * lineHeight + 20;
+  
+  // Draw the background rectangle
   page.drawRectangle({
     x: 40,
-    y: startY - (eventsOnPage.length * lineHeight) + 20,
+    y: eventsStartY - eventsHeight + 20,
     width: page.getSize().width - 80,
-    height: eventsOnPage.length * lineHeight + 20,
+    height: eventsHeight,
     color: rgb(0.98, 0.98, 0.98),
   });
 
@@ -233,7 +240,7 @@ async function drawActivitySection(page, pdfDoc, events, startIndex, endIndex, y
   const iconColor = rgb(0.0, 0.47, 0.85);
 
   for (const [index, event] of eventsOnPage.entries()) {
-    const eventY = startY - (index * lineHeight);
+    const eventY = eventsStartY - (index * lineHeight);
     const iconPath = getEventIcon(event.toLowerCase());
     
     if (iconPath) {
@@ -299,7 +306,7 @@ async function drawFooter(page, pdfDoc) {
     
     page.drawImage(logo, {
       x: 40,
-      y: 100,
+      y: 40, // Increased the Y position to create more space
       width: logoWidth,
       height: logoHeight
     });
@@ -317,18 +324,20 @@ async function appendEventPage(pdfPath, events) {
     const page1 = pdfDoc.addPage();
     const { height } = page1.getSize();
     
-    const eventsPerPage = calculateEventsPerPage(height);
-    const needsSecondPage = events.length > eventsPerPage;
-    
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, pdfDoc, fileName, titleY);
+    
+    // Calculate events per page based on the actual starting Y position
+    const eventsPerPage = calculateEventsPerPage(height, activityY);
+    const needsSecondPage = events.length > eventsPerPage;
+    
     await drawActivitySection(page1, pdfDoc, events, 0, needsSecondPage ? eventsPerPage : events.length, activityY, true);
     await drawFooter(page1, pdfDoc);
     
     if (needsSecondPage) {
       const page2 = pdfDoc.addPage();
-      await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
-      await drawActivitySection(page2, pdfDoc, events, eventsPerPage, events.length, height - 150);
+      const titleY2 = await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await pdfDoc.embedFont(StandardFonts.HelveticaBold));
+      await drawActivitySection(page2, pdfDoc, events, eventsPerPage, events.length, titleY2);
       await drawFooter(page2, pdfDoc);
     }
     
@@ -350,18 +359,20 @@ async function createAndMergePdf(originalPdfPath, eventlogs) {
     const page1 = eventsPdfDoc.addPage();
     const { height } = page1.getSize();
     
-    const eventsPerPage = calculateEventsPerPage(height);
-    const needsSecondPage = eventlogs.length > eventsPerPage;
-
     const titleY = await drawSectionTitle(page1, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
     const activityY = await drawDetailsSection(page1, eventsPdfDoc, fileName, titleY);
+    
+    // Calculate events per page based on the actual starting Y position
+    const eventsPerPage = calculateEventsPerPage(height, activityY);
+    const needsSecondPage = eventlogs.length > eventsPerPage;
+
     await drawActivitySection(page1, eventsPdfDoc, eventlogs, 0, needsSecondPage ? eventsPerPage : eventlogs.length, activityY, true);
     await drawFooter(page1, eventsPdfDoc);
 
     if (needsSecondPage) {
       const page2 = eventsPdfDoc.addPage();
-      await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
-      await drawActivitySection(page2, eventsPdfDoc, eventlogs, eventsPerPage, eventlogs.length, height - 150);
+      const titleY2 = await drawSectionTitle(page2, 'Audit Trail', fileName, height - 50, await eventsPdfDoc.embedFont(StandardFonts.HelveticaBold));
+      await drawActivitySection(page2, eventsPdfDoc, eventlogs, eventsPerPage, eventlogs.length, titleY2);
       await drawFooter(page2, eventsPdfDoc);
     }
 
